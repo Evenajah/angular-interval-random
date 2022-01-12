@@ -1,6 +1,13 @@
 import { Component } from '@angular/core';
-import { BehaviorSubject, finalize, interval, Subject, switchMap } from 'rxjs';
-import { exhaustMap, scan, takeUntil, tap } from 'rxjs/operators';
+import {
+  BehaviorSubject,
+  finalize,
+  interval,
+  Subject,
+  switchMap,
+  timer,
+} from 'rxjs';
+import { exhaustMap, map, scan, takeUntil, tap } from 'rxjs/operators';
 
 @Component({
   selector: 'my-app',
@@ -11,21 +18,27 @@ export class AppComponent {
   interval = new BehaviorSubject<number>(Math.floor(Math.random() * 11) * 1000);
   destroy = new Subject<void>();
   ngOnInit() {
-    this.interval
-      .pipe(
-        scan((total, res) => {
-          return { res: res, total: total + 1 };
-        }, 0),
-        switchMap((res) => {
-          console.log(res.total);
-          console.log('random : ' + res.res / 1000);
-          return interval(res.res);
-        }),
-        takeUntil(this.destroy)
-      )
-      .subscribe(() => {
-        this.interval.next(Math.floor(Math.random() * 11) * 1000);
-      });
+    const eiei = this.interval.pipe(
+      scan((total, res) => {
+        return total + 1;
+      }, 0),
+      switchMap(() => {
+        return timer(this.interval.getValue()).pipe(
+          map((res) => {
+            return {
+              count: res,
+              interval: this.interval.getValue(),
+            };
+          })
+        );
+      }),
+      takeUntil(this.destroy)
+    );
+
+    eiei.subscribe((res) => {
+      console.log(res);
+      this.interval.next(Math.floor(Math.random() * 11) * 1000);
+    });
   }
 
   ngOnDestroy() {
